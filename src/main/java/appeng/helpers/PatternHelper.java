@@ -68,6 +68,7 @@ public class PatternHelper implements ICraftingPatternDetails, Comparable<Patter
     private final Set<TestLookup> failCache = new HashSet<>();
     private final Set<TestLookup> passCache = new HashSet<>();
     private final IAEItemStack pattern;
+    private final boolean isPackaging;
     private int priority = 0;
 
     public PatternHelper(final ItemStack is, final World w) {
@@ -80,6 +81,7 @@ public class PatternHelper implements ICraftingPatternDetails, Comparable<Patter
         final NBTTagList inTag = encodedValue.getTagList("in", 10);
         final NBTTagList outTag = encodedValue.getTagList("out", 10);
         this.isCrafting = encodedValue.getBoolean("crafting");
+        this.isPackaging = encodedValue.getBoolean("packaging");
 
         crafting = new InventoryCrafting(new ContainerNull(), isCrafting ? 3 : 4, isCrafting ? 3 : 4);
         testFrame = new InventoryCrafting(new ContainerNull(), isCrafting ? 3 : 4, isCrafting ? 3 : 4);
@@ -205,6 +207,11 @@ public class PatternHelper implements ICraftingPatternDetails, Comparable<Patter
     @Override
     public ItemStack getPattern() {
         return this.patternItem;
+    }
+
+    @Override
+    public boolean isPackage() {
+        return this.isPackaging;
     }
 
     @Override

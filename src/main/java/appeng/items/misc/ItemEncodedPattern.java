@@ -136,6 +136,7 @@ public class ItemEncodedPattern extends AEBaseItem implements ICraftingPatternIt
 
         final boolean isCrafting = details.isCraftable();
         final boolean substitute = details.canSubstitute();
+        final boolean isPackage = details.isPackage();
 
         final IAEItemStack[] in = details.getCondensedInputs();
         final IAEItemStack[] out = details.getCondensedOutputs();
@@ -169,6 +170,11 @@ public class ItemEncodedPattern extends AEBaseItem implements ICraftingPatternIt
             final String canSubstitute = substitute ? GuiText.Yes.getLocal() : GuiText.No.getLocal();
 
             lines.add(substitutionLabel + canSubstitute);
+        } else {
+            final String packageLabel = GuiText.Package.getLocal() + " ";
+            final String canPackage = isPackage ? GuiText.Yes.getLocal() : GuiText.No.getLocal();
+
+            lines.add(packageLabel + canPackage);
         }
     }
 

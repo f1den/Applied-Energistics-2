@@ -1,7 +1,7 @@
 package appeng.client.gui.implementations;
 
 import appeng.api.config.ActionItems;
-import appeng.api.config.ItemSubstitution;
+import appeng.api.config.Packaging;
 import appeng.api.config.Settings;
 import appeng.api.storage.ITerminalHost;
 import appeng.client.gui.widgets.GuiImgButton;
@@ -36,6 +36,9 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
     private static final String SUBSITUTION_DISABLE = "0";
     private static final String SUBSITUTION_ENABLE = "1";
 
+    private static final String PACKAGING_DISABLE = "0";
+    private static final String PACKAGING_ENABLE = "1";
+
     private static final String CRAFTMODE_CRFTING = "1";
     private static final String CRAFTMODE_PROCESSING = "0";
 
@@ -52,10 +55,14 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
     private GuiImgButton divThreeBtn;
     private GuiImgButton minusOneBtn;
     private GuiImgButton maxCountBtn;
+    private GuiImgButton packagingEnabledBtn;
+    private GuiImgButton packagingDisabledBtn;
     public Map<IGhostIngredientHandler.Target<?>, Object> mapTargetSlot = new HashMap<>();
+    private ContainerExpandedProcessingPatternTerm container;
 
     public GuiExpandedProcessingPatternTerm(final InventoryPlayer inventoryPlayer, final ITerminalHost te) {
         super(inventoryPlayer, te, new ContainerExpandedProcessingPatternTerm(inventoryPlayer, te));
+        this.container = (ContainerExpandedProcessingPatternTerm) this.inventorySlots;
         this.setReservedSpace(81);
     }
 
@@ -112,6 +119,13 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
             if (this.substitutionsEnabledBtn == btn || this.substitutionsDisabledBtn == btn) {
                 NetworkHandler.instance().sendToServer(new PacketValueConfig("PatternTerminal.Substitute", this.substitutionsEnabledBtn == btn ? SUBSITUTION_DISABLE : SUBSITUTION_ENABLE));
             }
+
+            if (this.packagingEnabledBtn == btn || this.packagingDisabledBtn == btn) {
+                NetworkHandler.instance()
+                        .sendToServer(
+                                new PacketValueConfig("PatternTerminal.Package", this.packagingEnabledBtn == btn ? PACKAGING_DISABLE : PACKAGING_ENABLE));
+            }
+
         } catch (final IOException e) {
             AELog.error(e);
         }
@@ -121,29 +135,26 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
     public void initGui() {
         super.initGui();
 
-        this.tabCraftButton = new GuiTabButton(this.guiLeft + 173, this.guiTop + this.ySize - 177, new ItemStack(Blocks.CRAFTING_TABLE), GuiText.CraftingPattern.getLocal(), this.itemRender);
-        this.buttonList.add(this.tabCraftButton);
-
         this.tabProcessButton = new GuiTabButton(this.guiLeft + 173, this.guiTop + this.ySize - 177, new ItemStack(Blocks.FURNACE), GuiText.ProcessingPattern.getLocal(), this.itemRender);
         this.buttonList.add(this.tabProcessButton);
 
-        this.substitutionsEnabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, ItemSubstitution.ENABLED);
-        this.substitutionsEnabledBtn.setHalfSize(true);
-        this.buttonList.add(this.substitutionsEnabledBtn);
+        this.packagingEnabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, Packaging.ENABLED);
+        this.packagingEnabledBtn.setHalfSize(true);
+        this.buttonList.add(this.packagingEnabledBtn);
 
-        this.substitutionsDisabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, ItemSubstitution.DISABLED);
-        this.substitutionsDisabledBtn.setHalfSize(true);
-        this.buttonList.add(this.substitutionsDisabledBtn);
+        this.packagingDisabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, Packaging.DISABLED);
+        this.packagingDisabledBtn.setHalfSize(true);
+        this.buttonList.add(this.packagingDisabledBtn);
 
         this.clearBtn = new GuiImgButton(this.guiLeft + 74, this.guiTop + this.ySize - 163, Settings.ACTIONS, ActionItems.CLOSE);
         this.clearBtn.setHalfSize(true);
         this.buttonList.add(this.clearBtn);
 
-        this.x3Btn = new GuiImgButton(this.guiLeft + 131, this.guiTop + this.ySize - 158, Settings.ACTIONS, ActionItems.MULTIPLY_BY_THREE);
+        this.x3Btn = new GuiImgButton(this.guiLeft + 131, this.guiTop + this.ySize - 154, Settings.ACTIONS, ActionItems.MULTIPLY_BY_THREE);
         this.x3Btn.setHalfSize(true);
         this.buttonList.add(this.x3Btn);
 
-        this.x2Btn = new GuiImgButton(this.guiLeft + 131, this.guiTop + this.ySize - 148, Settings.ACTIONS, ActionItems.MULTIPLY_BY_TWO);
+        this.x2Btn = new GuiImgButton(this.guiLeft + 131, this.guiTop + this.ySize - 144, Settings.ACTIONS, ActionItems.MULTIPLY_BY_TWO);
         this.x2Btn.setHalfSize(true);
         this.buttonList.add(this.x2Btn);
 
@@ -151,11 +162,11 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
         this.plusOneBtn.setHalfSize(true);
         this.buttonList.add(this.plusOneBtn);
 
-        this.divThreeBtn = new GuiImgButton(this.guiLeft + 87, this.guiTop + this.ySize - 158, Settings.ACTIONS, ActionItems.DIVIDE_BY_THREE);
+        this.divThreeBtn = new GuiImgButton(this.guiLeft + 87, this.guiTop + this.ySize - 154, Settings.ACTIONS, ActionItems.DIVIDE_BY_THREE);
         this.divThreeBtn.setHalfSize(true);
         this.buttonList.add(this.divThreeBtn);
 
-        this.divTwoBtn = new GuiImgButton(this.guiLeft + 87, this.guiTop + this.ySize - 148, Settings.ACTIONS, ActionItems.DIVIDE_BY_TWO);
+        this.divTwoBtn = new GuiImgButton(this.guiLeft + 87, this.guiTop + this.ySize - 144, Settings.ACTIONS, ActionItems.DIVIDE_BY_TWO);
         this.divTwoBtn.setHalfSize(true);
         this.buttonList.add(this.divTwoBtn);
 
@@ -173,16 +184,21 @@ public class GuiExpandedProcessingPatternTerm extends GuiMEMonitorable implement
 
     @Override
     public void drawFG(final int offsetX, final int offsetY, final int mouseX, final int mouseY) {
-        this.tabCraftButton.visible = false;
         this.tabProcessButton.visible = true;
-        this.substitutionsEnabledBtn.visible = false;
-        this.substitutionsDisabledBtn.visible = false;
         this.x2Btn.visible = true;
         this.x3Btn.visible = true;
         this.divTwoBtn.visible = true;
         this.divThreeBtn.visible = true;
         this.plusOneBtn.visible = true;
         this.minusOneBtn.visible = true;
+
+        if (this.container.packaging) {
+            this.packagingEnabledBtn.visible = true;
+            this.packagingDisabledBtn.visible = false;
+        } else {
+            this.packagingEnabledBtn.visible = false;
+            this.packagingDisabledBtn.visible = true;
+        }
         //this.maxCountBtn.visible = true;
 
         super.drawFG(offsetX, offsetY, mouseX, mouseY);

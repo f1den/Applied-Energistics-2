@@ -116,6 +116,11 @@ public enum ButtonToolTips {
     SubstitutionsOff,
     SubstitutionsDescEnabled,
     SubstitutionsDescDisabled,
+    Packaging,
+    PackagingOn,
+    PackagingOff,
+    PackagingDescEnabled,
+    PackagingDescDisabled,
     CraftOnly,
     CraftEither,
 

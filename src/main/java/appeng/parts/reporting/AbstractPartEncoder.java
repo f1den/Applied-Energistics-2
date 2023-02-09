@@ -23,6 +23,7 @@ public abstract class AbstractPartEncoder extends AbstractPartTerminal {
 
     protected boolean craftingMode = true;
     protected boolean substitute = false;
+    protected boolean packaging = false;
 
     public AbstractPartEncoder(ItemStack is) {
         super(is);
@@ -104,6 +105,14 @@ public abstract class AbstractPartEncoder extends AbstractPartTerminal {
 
     public boolean isSubstitution() {
         return this.substitute;
+    }
+
+    public void setPackaging(boolean packaging) {
+        this.packaging = packaging;
+    }
+
+    public boolean isPackaging() {
+        return this.packaging;
     }
 
     public void setSubstitution(final boolean canSubstitute) {

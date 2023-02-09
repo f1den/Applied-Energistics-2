@@ -224,7 +224,7 @@ public class ContainerWirelessPatternTerminal extends ContainerPatternEncoder im
             this.output.writeToNBT(tag, "output");
             this.pattern.writeToNBT(tag, "patterns");
             this.upgrades.writeToNBT(tag, "upgrades");
-
+            tag.setBoolean("isPackaging", this.packaging);
             this.wirelessTerminalGUIObject.saveChanges(tag);
         }
     }
@@ -236,6 +236,7 @@ public class ContainerWirelessPatternTerminal extends ContainerPatternEncoder im
             this.output.readFromNBT(data, "output");
             this.pattern.readFromNBT(data, "patterns");
             upgrades.readFromNBT(wirelessTerminalGUIObject.getItemStack().getTagCompound().getCompoundTag("upgrades"));
+            this.packaging = data.getBoolean("isPackaging");
         }
     }
 

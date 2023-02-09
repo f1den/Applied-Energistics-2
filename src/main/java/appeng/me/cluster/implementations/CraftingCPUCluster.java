@@ -546,6 +546,10 @@ public final class CraftingCPUCluster implements IAECluster, ICraftingCPU {
             return;
         }
 
+        if (this.finalOutput.getStackSize() == 0) {
+            this.completeJob();
+        }
+
         this.waiting = false;
         if (this.waiting || this.tasks.isEmpty()) // nothing to do here...
         {
@@ -701,7 +705,11 @@ public final class CraftingCPUCluster implements IAECluster, ICraftingCPU {
 
                             for (final IAEItemStack out : details.getCondensedOutputs()) {
                                 this.postChange(out, this.machineSrc);
-                                this.waitingFor.add(out.copy());
+                                if (!details.isPackage()) {
+                                    this.waitingFor.add(out.copy());
+                                } else {
+                                    this.finalOutput.setStackSize(finalOutput.getStackSize() - out.getStackSize());
+                                }
                                 this.postCraftingStatusChange(out.copy());
                             }
 

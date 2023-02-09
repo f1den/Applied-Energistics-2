@@ -12,14 +12,7 @@ import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IItemList;
 import appeng.container.ContainerNull;
 import appeng.container.guisync.GuiSync;
-import appeng.container.slot.AppEngSlot;
-import appeng.container.slot.IOptionalSlotHost;
-import appeng.container.slot.OptionalSlotFake;
-import appeng.container.slot.SlotFakeCraftingMatrix;
-import appeng.container.slot.SlotPatternTerm;
-import appeng.container.slot.SlotPlayerHotBar;
-import appeng.container.slot.SlotPlayerInv;
-import appeng.container.slot.SlotRestrictedInput;
+import appeng.container.slot.*;
 import appeng.core.sync.packets.PacketPatternSlot;
 import appeng.helpers.IContainerCraftingPacket;
 import appeng.items.storage.ItemViewCell;
@@ -74,6 +67,8 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
     public boolean craftingMode = true;
     @GuiSync(96)
     public boolean substitute = false;
+    @GuiSync(95)
+    public boolean packaging = false;
 
     protected ContainerPatternEncoder(InventoryPlayer ip, ITerminalHost monitorable, boolean bindInventory) {
         super(ip, monitorable, bindInventory);
@@ -254,8 +249,12 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
 
         encodedValue.setTag("in", tagIn);
         encodedValue.setTag("out", tagOut);
-        encodedValue.setBoolean("crafting", this.isCraftingMode());
-        encodedValue.setBoolean("substitute", this.isSubstitute());
+        if (this.isCraftingMode()) {
+            encodedValue.setBoolean("crafting", this.isCraftingMode());
+            encodedValue.setBoolean("substitute", this.isSubstitute());
+        } else {
+            encodedValue.setBoolean("packaging", this.isPackaging());
+        }
 
         output.setTagCompound(encodedValue);
 
@@ -532,6 +531,14 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
     }
 
     public void setSubstitute(final boolean substitute) {
+        if (getPart() != null) {
+            getPart().setSubstitution(substitute);
+        } else if (iGuiItemObject != null) {
+            NBTTagCompound nbtTagCompound = iGuiItemObject.getItemStack().getTagCompound();
+            if (nbtTagCompound != null) {
+                nbtTagCompound.setBoolean("isSubstitute", substitute);
+            }
+        }
         this.substitute = substitute;
         if (getPart() != null) {
             getPart().setSubstitution(substitute);
@@ -543,6 +550,22 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
         }
     }
 
+    public boolean isPackaging() {
+        return this.packaging;
+    }
+
+    public void setPackaging(boolean packaging) {
+        if (getPart() != null) {
+            getPart().setPackaging(packaging);
+        } else if (iGuiItemObject != null) {
+            NBTTagCompound nbtTagCompound = iGuiItemObject.getItemStack().getTagCompound();
+            if (nbtTagCompound != null) {
+                nbtTagCompound.setBoolean("isPackaging", packaging);
+            }
+        }
+        this.packaging = packaging;
+    }
+
     @Override
     public void detectAndSendChanges() {
         super.detectAndSendChanges();
@@ -552,6 +575,7 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
                     this.setCraftingMode(this.getPart().isCraftingRecipe());
                     this.updateOrderOfOutputSlots();
                 }
+                this.packaging = this.getPart().isPackaging();
                 this.substitute = this.getPart().isSubstitution();
             } else if (iGuiItemObject != null) {
                 NBTTagCompound nbtTagCompound = iGuiItemObject.getItemStack().getTagCompound();
@@ -570,20 +594,23 @@ public abstract class ContainerPatternEncoder extends ContainerMEMonitorable imp
                     nbtTagCompound.setBoolean("isCraftingMode", false);
                     iGuiItemObject.getItemStack().setTagCompound(nbtTagCompound);
                 }
-                nbtTagCompound = iGuiItemObject.getItemStack().getTagCompound();
-                if (nbtTagCompound != null) {
-                    if (nbtTagCompound.hasKey("isSubstitute")) {
-                        boolean substitute = nbtTagCompound.getBoolean("isSubstitute");
-                        if (this.isSubstitute() != substitute) {
-                            this.setSubstitute(substitute);
-                        }
-                    } else {
-                        nbtTagCompound.setBoolean("isSubstitute", false);
+
+                if (nbtTagCompound.hasKey("isSubstitute")) {
+                    boolean substitute = nbtTagCompound.getBoolean("isSubstitute");
+                    if (this.isSubstitute() != substitute) {
+                        this.setSubstitute(substitute);
                     }
                 } else {
-                    nbtTagCompound = new NBTTagCompound();
                     nbtTagCompound.setBoolean("isSubstitute", false);
-                    iGuiItemObject.getItemStack().setTagCompound(nbtTagCompound);
+                }
+
+                if (nbtTagCompound.hasKey("isPackaging")) {
+                    boolean packaging = nbtTagCompound.getBoolean("isPackaging");
+                    if (this.isPackaging() != packaging) {
+                        this.setPackaging(packaging);
+                    }
+                } else {
+                    nbtTagCompound.setBoolean("isPackaging", false);
                 }
             }
         }

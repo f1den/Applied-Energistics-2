@@ -119,6 +119,7 @@ public enum GuiText {
     And,
     With,
     Substitute,
+    Package,
     Yes,
     No,
 

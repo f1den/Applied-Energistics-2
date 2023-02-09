@@ -21,6 +21,7 @@ package appeng.client.gui.implementations;
 
 import appeng.api.config.ActionItems;
 import appeng.api.config.ItemSubstitution;
+import appeng.api.config.Packaging;
 import appeng.api.config.Settings;
 import appeng.api.storage.ITerminalHost;
 import appeng.client.gui.widgets.GuiImgButton;
@@ -60,6 +61,9 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
     private static final String SUBSITUTION_DISABLE = "0";
     private static final String SUBSITUTION_ENABLE = "1";
 
+    private static final String PACKAGING_DISABLE = "0";
+    private static final String PACKAGING_ENABLE = "1";
+
     private static final String CRAFTMODE_CRFTING = "1";
     private static final String CRAFTMODE_PROCESSING = "0";
 
@@ -78,6 +82,8 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
     private GuiImgButton divThreeBtn;
     private GuiImgButton minusOneBtn;
     private GuiImgButton maxCountBtn;
+    private GuiImgButton packagingEnabledBtn;
+    private GuiImgButton packagingDisabledBtn;
     public Map<Target<?>, Object> mapTargetSlot = new HashMap<>();
 
     public GuiPatternTerm(final InventoryPlayer inventoryPlayer, final ITerminalHost te) {
@@ -149,6 +155,12 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
                         .sendToServer(
                                 new PacketValueConfig("PatternTerminal.Substitute", this.substitutionsEnabledBtn == btn ? SUBSITUTION_DISABLE : SUBSITUTION_ENABLE));
             }
+
+            if (this.packagingEnabledBtn == btn || this.packagingDisabledBtn == btn) {
+                NetworkHandler.instance()
+                        .sendToServer(
+                                new PacketValueConfig("PatternTerminal.Package", this.packagingEnabledBtn == btn ? PACKAGING_DISABLE : PACKAGING_ENABLE));
+            }
         } catch (final IOException e) {
             AELog.error(e);
         }
@@ -173,6 +185,14 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
         this.substitutionsDisabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, ItemSubstitution.DISABLED);
         this.substitutionsDisabledBtn.setHalfSize(true);
         this.buttonList.add(this.substitutionsDisabledBtn);
+
+        this.packagingEnabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, Packaging.ENABLED);
+        this.packagingEnabledBtn.setHalfSize(true);
+        this.buttonList.add(this.packagingEnabledBtn);
+
+        this.packagingDisabledBtn = new GuiImgButton(this.guiLeft + 84, this.guiTop + this.ySize - 163, Settings.ACTIONS, Packaging.DISABLED);
+        this.packagingDisabledBtn.setHalfSize(true);
+        this.buttonList.add(this.packagingDisabledBtn);
 
         this.clearBtn = new GuiImgButton(this.guiLeft + 74, this.guiTop + this.ySize - 163, Settings.ACTIONS, ActionItems.CLOSE);
         this.clearBtn.setHalfSize(true);
@@ -221,6 +241,8 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
             this.divThreeBtn.visible = false;
             this.plusOneBtn.visible = false;
             this.minusOneBtn.visible = false;
+            this.packagingEnabledBtn.visible = false;
+            this.packagingDisabledBtn.visible = false;
             //this.maxCountBtn.visible = false;
 
             if (this.container.substitute) {
@@ -231,6 +253,13 @@ public class GuiPatternTerm extends GuiMEMonitorable implements IJEIGhostIngredi
                 this.substitutionsDisabledBtn.visible = true;
             }
         } else {
+            if (this.container.packaging) {
+                this.packagingEnabledBtn.visible = true;
+                this.packagingDisabledBtn.visible = false;
+            } else {
+                this.packagingEnabledBtn.visible = false;
+                this.packagingDisabledBtn.visible = true;
+            }
             this.tabCraftButton.visible = false;
             this.tabProcessButton.visible = true;
             this.substitutionsEnabledBtn.visible = false;

@@ -255,14 +255,16 @@ public class PacketJEIRecipe extends AppEngPacket {
 
             if (this.output != null && ((con instanceof ContainerPatternEncoder && !((ContainerPatternEncoder) con).isCraftingMode()))) {
                 IItemHandler outputSlots = cct.getInventoryByName("output");
-                for (int i = 0; i < outputSlots.getSlots(); ++i) {
-                    ItemHandlerUtil.setStackInSlot(outputSlots, i, ItemStack.EMPTY);
-                }
-                for (int i = 0; i < this.output.size() && i < outputSlots.getSlots(); ++i) {
-                    if (this.output.get(i) == null || this.output.get(i) == ItemStack.EMPTY) {
-                        continue;
+                if (outputSlots != null) {
+                    for (int i = 0; i < outputSlots.getSlots(); ++i) {
+                        ItemHandlerUtil.setStackInSlot(outputSlots, i, ItemStack.EMPTY);
                     }
-                    ItemHandlerUtil.setStackInSlot(outputSlots, i, this.output.get(i));
+                    for (int i = 0; i < this.output.size() && i < outputSlots.getSlots(); ++i) {
+                        if (this.output.get(i) == null || this.output.get(i) == ItemStack.EMPTY) {
+                            continue;
+                        }
+                        ItemHandlerUtil.setStackInSlot(outputSlots, i, this.output.get(i));
+                    }
                 }
             }
         }

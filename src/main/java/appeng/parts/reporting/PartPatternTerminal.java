@@ -33,7 +33,6 @@ import net.minecraft.util.ResourceLocation;
 import javax.annotation.Nonnull;
 
 import static appeng.helpers.PatternHelper.CRAFTING_GRID_DIMENSION;
-import static appeng.helpers.PatternHelper.CRAFTING_OUTPUT_LIMIT;
 
 
 public class PartPatternTerminal extends AbstractPartEncoder {
@@ -60,6 +59,7 @@ public class PartPatternTerminal extends AbstractPartEncoder {
         super.readFromNBT(data);
         this.setCraftingRecipe(data.getBoolean("craftingMode"));
         this.setSubstitution(data.getBoolean("substitute"));
+        this.setPackaging(data.getBoolean("packaging"));
     }
 
     @Override
@@ -67,6 +67,7 @@ public class PartPatternTerminal extends AbstractPartEncoder {
         super.writeToNBT(data);
         data.setBoolean("craftingMode", this.craftingMode);
         data.setBoolean("substitute", this.substitute);
+        data.setBoolean("packaging", this.packaging);
     }
 
     @Override

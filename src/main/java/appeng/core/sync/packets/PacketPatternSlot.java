@@ -23,7 +23,6 @@ import appeng.api.AEApi;
 import appeng.api.storage.channels.IItemStorageChannel;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.container.implementations.ContainerPatternEncoder;
-import appeng.container.implementations.ContainerPatternTerm;
 import appeng.core.sync.AppEngPacket;
 import appeng.core.sync.network.INetworkInfo;
 import appeng.util.item.AEItemStack;
