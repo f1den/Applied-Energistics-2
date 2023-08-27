@@ -21,7 +21,6 @@ package appeng.client.render.model;
 
 import appeng.block.AEBaseTileBlock;
 import appeng.client.render.FacingToRotation;
-import com.google.common.base.Objects;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -31,21 +30,18 @@ import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.block.model.ItemOverrideList;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.vertex.VertexFormat;
-import net.minecraft.client.renderer.vertex.VertexFormatElement;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.math.Vec3i;
-import net.minecraftforge.client.model.pipeline.IVertexConsumer;
-import net.minecraftforge.client.model.pipeline.QuadGatheringTransformer;
-import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.common.property.IExtendedBlockState;
 
-import javax.vecmath.Vector3f;
+import javax.vecmath.Matrix4f;
+import javax.vecmath.Tuple4f;
 import javax.vecmath.Vector4f;
 import java.util.ArrayList;
 import java.util.List;
+
+import static net.minecraft.util.EnumFacing.DOWN;
 
 
 public class AutoRotatingModel implements IBakedModel, IResourceManagerReloadListener {
@@ -68,32 +64,169 @@ public class AutoRotatingModel implements IBakedModel, IResourceManagerReloadLis
         FacingToRotation f2r = FacingToRotation.get(forward, up);
         List<BakedQuad> original = AutoRotatingModel.this.parent.getQuads(state, f2r.resultingRotate(side), 0);
         List<BakedQuad> rotated = new ArrayList<>(original.size());
-        for (BakedQuad quad : original) {
-            VertexFormat format = quad.getFormat();
-            UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(format);
-            VertexRotator rot = new VertexRotator(f2r, quad.getFace());
-            rot.setParent(builder);
-            quad.pipe(rot);
-            if (quad.getFace() != null) {
-                builder.setQuadOrientation(f2r.rotate(quad.getFace()));
-            } else {
-                builder.setQuadOrientation(null);
 
-            }
-            BakedQuad unpackedQuad = builder.build();
+        final Matrix4f transformMatrix = new Matrix4f();
+        final Tuple4f vertexTransformingVec = new Vector4f();
 
-            // Make a copy of it to resolve the vertex data and throw away the unpacked stuff
-            // This also fixes a bug in Forge's UnpackedBakedQuad, which unpacks a byte-based normal like 0,0,-1
-            // to 0,0,-0.99607843. We replace these normals with the proper 0,0,-1 when rotation, which
-            // causes a bug in the AO lighter, if an unpacked quad pipes this value back to it.
-            // Packing it back to the vanilla vertex format will fix this inconsistency because it converts
-            // the normal back to a byte-based format, which then re-applies Forge's own bug when piping it
-            // to the AO lighter, thus fixing our problem.
-            BakedQuad packedQuad = new BakedQuad(unpackedQuad.getVertexData(), quad.getTintIndex(), unpackedQuad.getFace(), quad.getSprite(), quad
-                    .shouldApplyDiffuseLighting(), quad.getFormat());
-            rotated.add(packedQuad);
+        // Transform the matrix so the top and front facings of the model matches the block in-world
+        transformMatrixByFacings(transformMatrix, up, forward);
+
+        for (BakedQuad b : original) {
+            EnumFacing newFace = f2r.rotate(b.getFace());
+            rotated.add(rebakeQuad(b, newFace, transformMatrix, vertexTransformingVec));
         }
         return rotated;
+    }
+
+    private void transformMatrixByFacings(Matrix4f transformMatrix, EnumFacing topFacing, EnumFacing frontFacing) {
+        Matrix4f intermediaryMatrix = new Matrix4f();
+        transformMatrix.setIdentity();
+        moveToPivot(transformMatrix, intermediaryMatrix, true);
+        if (topFacing.getAxis() == EnumFacing.Axis.Y) {
+            switch (frontFacing) {
+                case NORTH:
+                    rotateY(transformMatrix, intermediaryMatrix, (float) (0));
+                    break;
+                case SOUTH:
+                    rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI));
+                    break;
+                case EAST:
+                    rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                    break;
+                case WEST:
+                    rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                    break;
+            }
+            if (topFacing == DOWN) {
+                rotateX(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+                rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+            }
+        } else {
+            switch (topFacing) {
+                case WEST:
+                    rotateZ(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                    switch (frontFacing) {
+                        case DOWN:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                            break;
+                        case UP:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (+Math.PI / 2));
+                            break;
+                        case SOUTH:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+                    }
+                    break;
+                case EAST:
+                    rotateZ(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                    switch (frontFacing) {
+                        case DOWN:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                            break;
+                        case UP:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                            break;
+                        case SOUTH:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI));
+                    }
+                    break;
+                case NORTH:
+                    rotateX(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                    switch (frontFacing) {
+                        case DOWN:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+                            break;
+                        case EAST:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                            break;
+                        case WEST:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                    }
+                    break;
+                default:
+                    rotateX(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                    switch (frontFacing) {
+                        case UP:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+                            break;
+                        case EAST:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (-Math.PI / 2));
+                            break;
+                        case SOUTH:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                            break;
+                        case WEST:
+                            rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI / 2));
+                            break;
+                    }
+            }
+            if (frontFacing.getAxis() == EnumFacing.Axis.Y) {
+                //rotateX(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+                rotateY(transformMatrix, intermediaryMatrix, (float) (Math.PI));
+            }
+        }
+        moveToPivot(transformMatrix, intermediaryMatrix, false);
+    }
+
+    private void moveToPivot(Matrix4f matrix, Matrix4f intermediary, boolean positive) {
+        intermediary.setIdentity();
+        float pivot = positive ? .5F : -.5F;
+        intermediary.m03 = pivot;
+        intermediary.m13 = pivot;
+        intermediary.m23 = pivot;
+        matrix.mul(intermediary);
+    }
+
+    private void rotateX(Matrix4f matrix, Matrix4f intermediary, float angle) {
+        intermediary.setIdentity();
+        intermediary.rotX(angle);
+        matrix.mul(intermediary);
+    }
+
+    private void rotateY(Matrix4f matrix, Matrix4f intermediary, float angle) {
+        intermediary.setIdentity();
+        intermediary.rotY(angle);
+        matrix.mul(intermediary);
+    }
+
+    private void rotateZ(Matrix4f matrix, Matrix4f intermediary, float angle) {
+        intermediary.setIdentity();
+        intermediary.rotZ(angle);
+        matrix.mul(intermediary);
+    }
+
+    private BakedQuad rebakeQuad(BakedQuad b, EnumFacing newFacing, Matrix4f transformMatrix, Tuple4f vertexTransformingVec) {
+        int[] newQuad = new int[28];
+        int[] quadData = b.getVertexData();
+        for (int k = 0; k < 4; ++k) {
+            // Getting the offset for the current vertex.
+            int vertexIndex = k * 7;
+            vertexTransformingVec.x = Float.intBitsToFloat(quadData[vertexIndex]);
+            vertexTransformingVec.y = Float.intBitsToFloat(quadData[vertexIndex + 1]);
+            vertexTransformingVec.z = Float.intBitsToFloat(quadData[vertexIndex + 2]);
+            vertexTransformingVec.w = 1;
+
+            // Transforming it by the model matrix.
+            transformMatrix.transform(vertexTransformingVec);
+
+            // Converting the new data to ints.
+            int x = Float.floatToRawIntBits(vertexTransformingVec.x);
+            int y = Float.floatToRawIntBits(vertexTransformingVec.y);
+            int z = Float.floatToRawIntBits(vertexTransformingVec.z);
+
+            // Vertex position data
+            newQuad[vertexIndex] = x;
+            newQuad[vertexIndex + 1] = y;
+            newQuad[vertexIndex + 2] = z;
+
+            newQuad[vertexIndex + 3] = quadData[vertexIndex + 3];
+
+            newQuad[vertexIndex + 4] = quadData[vertexIndex + 4]; //texture
+            newQuad[vertexIndex + 5] = quadData[vertexIndex + 5];
+
+            // Vertex brightness
+            newQuad[vertexIndex + 6] = 0x81818181;
+        }
+        return new BakedQuad(newQuad, b.getTintIndex(), newFacing, b.getSprite(), b.shouldApplyDiffuseLighting(), b.getFormat());
     }
 
     @Override
@@ -159,140 +292,4 @@ public class AutoRotatingModel implements IBakedModel, IResourceManagerReloadLis
         this.quadCache.invalidateAll();
     }
 
-    public static class VertexRotator extends QuadGatheringTransformer {
-        private final FacingToRotation f2r;
-        private final EnumFacing face;
-
-        public VertexRotator(FacingToRotation f2r, EnumFacing face) {
-            this.f2r = f2r;
-            this.face = face;
-        }
-
-        @Override
-        public void setParent(IVertexConsumer parent) {
-            super.setParent(parent);
-            if (Objects.equal(this.getVertexFormat(), parent.getVertexFormat())) {
-                return;
-            }
-            this.setVertexFormat(parent.getVertexFormat());
-        }
-
-        @Override
-        protected void processQuad() {
-            VertexFormat format = this.parent.getVertexFormat();
-            int count = format.getElementCount();
-
-            for (int v = 0; v < 4; v++) {
-                for (int e = 0; e < count; e++) {
-                    VertexFormatElement element = format.getElement(e);
-                    if (element.getUsage() == VertexFormatElement.EnumUsage.POSITION) {
-                        this.parent.put(e, this.transform(this.quadData[e][v]));
-                    } else if (element.getUsage() == VertexFormatElement.EnumUsage.NORMAL) {
-                        this.parent.put(e, this.transformNormal(this.quadData[e][v]));
-                    } else {
-                        this.parent.put(e, this.quadData[e][v]);
-                    }
-                }
-            }
-        }
-
-        private float[] transform(float[] fs) {
-            switch (fs.length) {
-                case 3:
-                    Vector3f vec = new Vector3f(fs[0], fs[1], fs[2]);
-                    vec.x -= 0.5f;
-                    vec.y -= 0.5f;
-                    vec.z -= 0.5f;
-                    this.f2r.getMat().transform(vec);
-                    vec.x += 0.5f;
-                    vec.y += 0.5f;
-                    vec.z += 0.5f;
-                    return new float[]{vec.x, vec.y, vec.z
-                    };
-                case 4:
-                    Vector4f vecc = new Vector4f(fs[0], fs[1], fs[2], fs[3]);
-                    vecc.x -= 0.5f;
-                    vecc.y -= 0.5f;
-                    vecc.z -= 0.5f;
-                    this.f2r.getMat().transform(vecc);
-                    vecc.x += 0.5f;
-                    vecc.y += 0.5f;
-                    vecc.z += 0.5f;
-                    return new float[]{vecc.x, vecc.y, vecc.z, vecc.w
-                    };
-
-                default:
-                    return fs;
-            }
-        }
-
-        private float[] transformNormal(float[] fs) {
-            if (this.face == null) {
-                switch (fs.length) {
-                    case 3:
-                        Vector3f vec = new Vector3f(fs);
-                        this.f2r.getMat().transform(vec);
-                        return new float[]{
-                                vec.getX(),
-                                vec.getY(),
-                                vec.getZ()
-                        };
-                    case 4:
-                        Vector4f vec4 = new Vector4f(fs);
-                        this.f2r.getMat().transform(vec4);
-                        return new float[]{
-                                vec4.getX(),
-                                vec4.getY(),
-                                vec4.getZ(),
-                                0
-                        };
-
-                    default:
-                        return fs;
-                }
-            } else {
-                switch (fs.length) {
-                    case 3:
-                        Vec3i vec = this.f2r.rotate(this.face).getDirectionVec();
-                        return new float[]{
-                                vec.getX(),
-                                vec.getY(),
-                                vec.getZ()
-                        };
-                    case 4:
-                        Vector4f veccc = new Vector4f(fs[0], fs[1], fs[2], fs[3]);
-                        Vec3i vecc = this.f2r.rotate(this.face).getDirectionVec();
-                        return new float[]{
-                                vecc.getX(),
-                                vecc.getY(),
-                                vecc.getZ(),
-                                veccc.w
-                        };
-
-                    default:
-                        return fs;
-                }
-            }
-        }
-
-        @Override
-        public void setQuadTint(int tint) {
-            this.parent.setQuadTint(tint);
-        }
-
-        @Override
-        public void setQuadOrientation(EnumFacing orientation) {
-            this.parent.setQuadOrientation(orientation);
-        }
-
-        @Override
-        public void setApplyDiffuseLighting(boolean diffuse) {
-            this.parent.setApplyDiffuseLighting(diffuse);
-        }
-
-        @Override
-        public void setTexture(TextureAtlasSprite texture) {
-            this.parent.setTexture(texture);
-        }
-    }
 }
