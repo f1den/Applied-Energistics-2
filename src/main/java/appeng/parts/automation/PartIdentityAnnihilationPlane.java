@@ -19,23 +19,27 @@
 package appeng.parts.automation;
 
 
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
 import appeng.api.parts.IPartModel;
-import appeng.api.util.AEPartLocation;
 import appeng.items.parts.PartModels;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.init.Enchantments;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumHand;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
+import net.minecraftforge.event.ForgeEventFactory;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
@@ -54,15 +58,6 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
     }
 
     @Override
-    protected boolean isAnnihilationPlane(final TileEntity blockTileEntity, final AEPartLocation side) {
-        if (blockTileEntity instanceof IPartHost) {
-            final IPart p = ((IPartHost) blockTileEntity).getPart(side);
-            return p != null && p.getClass() == this.getClass();
-        }
-        return false;
-    }
-
-    @Override
     protected float calculateEnergyUsage(final WorldServer w, final BlockPos pos, final List<ItemStack> items) {
         final float requiredEnergy = super.calculateEnergyUsage(w, pos, items);
 
@@ -74,7 +69,11 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
         final FakePlayer fakePlayer = FakePlayerFactory.getMinecraft(w);
         final IBlockState state = w.getBlockState(pos);
 
-        if (state.getBlock().canSilkHarvest(w, pos, state, fakePlayer)) {
+        final ItemStack prevItem = fakePlayer.getHeldItem(EnumHand.MAIN_HAND);
+        final ItemStack stack = getItemStack();
+        fakePlayer.setHeldItem(EnumHand.MAIN_HAND, stack);
+
+        if (state.getBlock().canSilkHarvest(w, pos, state, fakePlayer) && getEnchantLevel(Enchantments.FORTUNE, stack) <= 0) {
             final List<ItemStack> out = new ArrayList<>(1);
             final Item item = Item.getItemFromBlock(state.getBlock());
 
@@ -85,16 +84,33 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
                 }
                 final ItemStack itemstack = new ItemStack(item, 1, meta);
                 out.add(itemstack);
+
+                final float chance = ForgeEventFactory.fireBlockHarvesting(out, w, pos, state, 0, 1.0F, true, fakePlayer);
+                fakePlayer.setHeldItem(EnumHand.MAIN_HAND, prevItem);
+                if (chance == 1.0F) return out;
+                return out.stream().filter($ -> w.rand.nextFloat() <= chance).collect(Collectors.toList());
             }
+            fakePlayer.setHeldItem(EnumHand.MAIN_HAND, prevItem);
             return out;
-        } else {
-            return super.obtainBlockDrops(w, pos);
         }
+        final int fortune = getEnchantLevel(Enchantments.FORTUNE, stack);
+        final NonNullList<ItemStack> drops = NonNullList.create();
+        state.getBlock().getDrops(drops, w, pos, state, fortune);
+
+        final float chance = ForgeEventFactory.fireBlockHarvesting(drops, w, pos, state, fortune, 1.0F, false, fakePlayer);
+        fakePlayer.setHeldItem(EnumHand.MAIN_HAND, prevItem);
+        if (chance == 1.0F) return drops;
+        return drops.stream().filter($ -> w.rand.nextFloat() <= chance).collect(Collectors.toList());
     }
 
+    @Nonnull
     @Override
     public IPartModel getStaticModels() {
         return MODELS.getModel(this.getConnections(), this.isPowered(), this.isActive());
     }
 
+    private static int getEnchantLevel(final Enchantment enchantment, final ItemStack stack) {
+        if (enchantment == null) return 0;
+        return EnchantmentHelper.getEnchantmentLevel(enchantment, stack);
+    }
 }

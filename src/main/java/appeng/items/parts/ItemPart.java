@@ -141,6 +141,27 @@ public final class ItemPart extends AEBaseItem implements IPartItem, IItemGroup 
     }
 
     @Override
+    public boolean isBookEnchantable(ItemStack itemstack1, ItemStack itemstack2) {
+        return true;
+    }
+
+    @Override
+    public boolean isEnchantable(ItemStack stack) {
+        if (getTypeByStack(stack) == PartType.IDENTITY_ANNIHILATION_PLANE) {
+            return true;
+        }
+        return super.isEnchantable(stack);
+    }
+
+    @Override
+    public int getItemEnchantability(ItemStack stack) {
+        if (getTypeByStack(stack) == PartType.IDENTITY_ANNIHILATION_PLANE) {
+            return 10;
+        }
+        return super.getItemEnchantability(stack);
+    }
+
+    @Override
     @Nonnull
     public String getTranslationKey(final ItemStack is) {
         Preconditions.checkNotNull(is);
