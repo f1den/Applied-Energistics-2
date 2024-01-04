@@ -51,17 +51,33 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
         return MODELS.getModels();
     }
 
-    private static final float SILK_TOUCH_FACTOR = 16;
-
     public PartIdentityAnnihilationPlane(final ItemStack is) {
         super(is);
     }
 
     @Override
     protected float calculateEnergyUsage(final WorldServer w, final BlockPos pos, final List<ItemStack> items) {
-        final float requiredEnergy = super.calculateEnergyUsage(w, pos, items);
+        float requiredEnergy = super.calculateEnergyUsage(w, pos, items);
 
-        return requiredEnergy * SILK_TOUCH_FACTOR;
+        final ItemStack stack = getItemStack();
+
+        // Give plane only a (100 / (level + 1))% chance to use energy.
+        // This is similar to vanilla Unbreaking behaviour for tools.
+        final int unbreaking = getEnchantmentLevel(Enchantments.UNBREAKING, stack);
+        if (unbreaking > 0) {
+            int randomNumber = w.rand.nextInt(unbreaking + 1);
+            if (randomNumber == 0) return 0;
+        }
+
+        // Increase power cost from other enchantments.
+        final int levelSum = EnchantmentHelper.getEnchantments(stack).values().stream().reduce(0, Integer::sum);
+        if (levelSum > 0) {
+            final int efficiency = getEnchantmentLevel(Enchantments.EFFICIENCY, stack);
+            requiredEnergy *= 8 * (levelSum - efficiency);
+            // Reduce total energy usage incurred by other enchantments by 15% per Efficiency level.
+            requiredEnergy *= (float) Math.pow(0.85F, efficiency);
+        }
+        return requiredEnergy;
     }
 
     @Override
@@ -73,7 +89,9 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
         final ItemStack stack = getItemStack();
         fakePlayer.setHeldItem(EnumHand.MAIN_HAND, stack);
 
-        if (state.getBlock().canSilkHarvest(w, pos, state, fakePlayer) && getEnchantLevel(Enchantments.FORTUNE, stack) <= 0) {
+        final int fortune = getEnchantmentLevel(Enchantments.FORTUNE, stack);
+
+        if (state.getBlock().canSilkHarvest(w, pos, state, fakePlayer) && fortune <= 0) {
             final List<ItemStack> out = new ArrayList<>(1);
             final Item item = Item.getItemFromBlock(state.getBlock());
 
@@ -93,7 +111,6 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
             fakePlayer.setHeldItem(EnumHand.MAIN_HAND, prevItem);
             return out;
         }
-        final int fortune = getEnchantLevel(Enchantments.FORTUNE, stack);
         final NonNullList<ItemStack> drops = NonNullList.create();
         state.getBlock().getDrops(drops, w, pos, state, fortune);
 
@@ -109,7 +126,7 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
         return MODELS.getModel(this.getConnections(), this.isPowered(), this.isActive());
     }
 
-    private static int getEnchantLevel(final Enchantment enchantment, final ItemStack stack) {
+    private static int getEnchantmentLevel(final Enchantment enchantment, final ItemStack stack) {
         if (enchantment == null) return 0;
         return EnchantmentHelper.getEnchantmentLevel(enchantment, stack);
     }
