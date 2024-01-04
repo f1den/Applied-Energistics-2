@@ -66,7 +66,7 @@ public class PartIdentityAnnihilationPlane extends PartAnnihilationPlane {
         final int unbreaking = getEnchantmentLevel(Enchantments.UNBREAKING, stack);
         if (unbreaking > 0) {
             int randomNumber = w.rand.nextInt(unbreaking + 1);
-            if (randomNumber == 0) return 0;
+            if (randomNumber > 0) return 0;
         }
 
         // Increase power cost from other enchantments.
