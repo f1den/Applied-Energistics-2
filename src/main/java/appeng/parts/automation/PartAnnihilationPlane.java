@@ -330,6 +330,12 @@ public class PartAnnihilationPlane extends PartBasicState implements IGridTickab
         return changed;
     }
 
+    private void handleOverflow(final ItemStack stack, final IAEItemStack overflow) {
+        if (overflow.getStackSize() != 0L) {
+            stack.setCount((int) overflow.getStackSize());
+        }
+    }
+
     protected boolean isAnnihilationPlane(final TileEntity blockTileEntity, final AEPartLocation side) {
         if (blockTileEntity instanceof IPartHost) {
             final IPart p = ((IPartHost) blockTileEntity).getPart(side);
@@ -371,7 +377,7 @@ public class PartAnnihilationPlane extends PartBasicState implements IGridTickab
                     if (hasPower && canStore) {
                         if (modulate) {
                             energy.extractAEPower(requiredPower, Actionable.MODULATE, PowerMultiplier.CONFIG);
-                            this.breakBlockAndStoreItems(w, pos);
+                            this.breakBlockAndStoreItems(w, pos, items);
                             AppEng.proxy.sendToAllNearExcept(null, pos.getX(), pos.getY(), pos.getZ(), 64, w,
                                     new PacketTransitionEffect(pos.getX(), pos.getY(), pos.getZ(), this.getSide(), true));
                         } else {
@@ -471,14 +477,12 @@ public class PartAnnihilationPlane extends PartBasicState implements IGridTickab
         return canStore;
     }
 
-    private void breakBlockAndStoreItems(final WorldServer w, final BlockPos pos) {
-        w.destroyBlock(pos, true);
-
-        final AxisAlignedBB box = new AxisAlignedBB(pos).grow(0.2);
-        for (final Object ei : w.getEntitiesWithinAABB(EntityItem.class, box)) {
-            if (ei instanceof EntityItem) {
-                final EntityItem entityItem = (EntityItem) ei;
-                this.storeEntityItem(entityItem);
+    private void breakBlockAndStoreItems(final WorldServer w, final BlockPos pos, final List<ItemStack> drops) {
+        w.destroyBlock(pos, false);
+        for (final ItemStack drop : drops) {
+            IAEItemStack overflow = storeItemStack(drop);
+            if (overflow != null) {
+                handleOverflow(drop, overflow);
             }
         }
     }
