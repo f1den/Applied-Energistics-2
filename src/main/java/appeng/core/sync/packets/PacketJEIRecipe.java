@@ -32,9 +32,7 @@ import appeng.api.networking.storage.IStorageGrid;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.channels.IItemStorageChannel;
 import appeng.api.storage.data.IAEItemStack;
-import appeng.container.implementations.ContainerExpandedProcessingPatternTerm;
 import appeng.container.implementations.ContainerPatternEncoder;
-import appeng.container.implementations.ContainerPatternTerm;
 import appeng.core.sync.AppEngPacket;
 import appeng.core.sync.network.INetworkInfo;
 import appeng.helpers.IContainerCraftingPacket;
@@ -47,6 +45,7 @@ import appeng.util.item.AEItemStack;
 import appeng.util.prioritylist.IPartitionList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.Container;
@@ -71,6 +70,7 @@ public class PacketJEIRecipe extends AppEngPacket {
 
     private List<ItemStack[]> recipe;
     private List<ItemStack> output;
+    private boolean shouldCondense;
     static ItemStack[] emptyArray = {ItemStack.EMPTY};
 
 
@@ -80,6 +80,7 @@ public class PacketJEIRecipe extends AppEngPacket {
         bytes.skip(stream.readerIndex());
         final NBTTagCompound comp = CompressedStreamTools.readCompressed(bytes);
         if (comp != null) {
+            this.shouldCondense = comp.getBoolean("condense");
             this.recipe = new ArrayList<>();
 
             for (int x = 0; x < comp.getKeySet().size(); x++) {
@@ -104,7 +105,6 @@ public class PacketJEIRecipe extends AppEngPacket {
                 }
             }
         }
-
     }
 
     // api
@@ -127,11 +127,10 @@ public class PacketJEIRecipe extends AppEngPacket {
         final EntityPlayerMP pmp = (EntityPlayerMP) player;
         final Container con = pmp.openContainer;
 
-        if (!(con instanceof IContainerCraftingPacket)) {
+        if (!(con instanceof IContainerCraftingPacket cct)) {
             return;
         }
 
-        final IContainerCraftingPacket cct = (IContainerCraftingPacket) con;
         final IGridNode node = cct.getNetworkNode();
 
         if (node == null) {
@@ -150,15 +149,28 @@ public class PacketJEIRecipe extends AppEngPacket {
         final IItemHandler craftMatrix = cct.getInventoryByName("crafting");
         final IItemHandler playerInventory = cct.getInventoryByName("player");
 
+        final Object2LongLinkedOpenHashMap<IAEItemStack> condensedBuffer;
+        if (this.shouldCondense) {
+            condensedBuffer = new Object2LongLinkedOpenHashMap<>();
+        } else {
+            condensedBuffer = null;
+        }
+
         if (inv != null && this.recipe != null && security != null) {
             final IMEMonitor<IAEItemStack> storage = inv.getInventory(AEApi.instance().storage().getStorageChannel(IItemStorageChannel.class));
             final IPartitionList<IAEItemStack> filter = ItemViewCell.createFilter(cct.getViewCells());
 
-            for (int x = 0; x < craftMatrix.getSlots(); x++) {
-                ItemStack currentItem = craftMatrix.getStackInSlot(x);
+            for (int x = 0; x < recipe.size(); x++) {
+                ItemStack currentItem;
 
-                if (x >= this.recipe.size()) {
+                if (x < craftMatrix.getSlots()) {
+                    currentItem = craftMatrix.getStackInSlot(x);
+                } else if (this.shouldCondense) {
+                    // If the inputs should be condensed, we can read past the current grid.
                     currentItem = ItemStack.EMPTY;
+                } else {
+                    // Otherwise break.
+                    break;
                 }
 
                 // prepare slots
@@ -251,7 +263,32 @@ public class PacketJEIRecipe extends AppEngPacket {
                         }
                     }
                 }
-                ItemHandlerUtil.setStackInSlot(craftMatrix, x, currentItem);
+
+                if (condensedBuffer != null) {
+                    var aeItemStack = AEItemStack.fromItemStack(currentItem);
+                    if (aeItemStack != null) {
+                        condensedBuffer.compute(aeItemStack, (k, v) -> (v == null ? 0 : v) + k.getStackSize());
+                    }
+                } else {
+                    ItemHandlerUtil.setStackInSlot(craftMatrix, x, currentItem);
+                }
+            }
+
+            if (condensedBuffer != null) {
+                var slotIndex = 0;
+                for (var entry : condensedBuffer.entrySet()) {
+                    if (slotIndex >= craftMatrix.getSlots()) {
+                        break;
+                    }
+
+                    ItemHandlerUtil.setStackInSlot(craftMatrix, slotIndex,
+                            entry.getKey().copy().setStackSize(entry.getValue()).createItemStack());
+                    slotIndex++;
+                }
+
+                for (var i = slotIndex; i < craftMatrix.getSlots(); i++) {
+                    ItemHandlerUtil.setStackInSlot(craftMatrix, i, ItemStack.EMPTY);
+                }
             }
 
             con.onCraftMatrixChanged(new WrapperInvItemHandler(craftMatrix));

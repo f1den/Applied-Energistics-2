@@ -16,9 +16,9 @@ import mezz.jei.gui.TooltipRenderer;
 import mezz.jei.gui.recipes.RecipeLayout;
 import mezz.jei.gui.recipes.RecipeTransferButton;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.inventory.Container;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.text.translation.I18n;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.PlayerMainInvWrapper;
 
@@ -26,12 +26,14 @@ import javax.annotation.Nonnull;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 
 import static mezz.jei.api.recipe.transfer.IRecipeTransferError.Type.USER_FACING;
+import static net.minecraft.client.resources.I18n.format;
 
 public class JEIMissingItem implements IRecipeTransferError {
-
+    private final IRecipeLayout recipeLayout;
     private boolean errored;
     public long lastUpdate;
     private final List<Integer> craftableSlots = new ArrayList<>();
@@ -40,8 +42,11 @@ public class JEIMissingItem implements IRecipeTransferError {
     IItemList<IAEItemStack> available = AEApi.instance().storage().getStorageChannel(IItemStorageChannel.class).createList();
 
     IItemList<IAEItemStack> used = AEApi.instance().storage().getStorageChannel(IItemStorageChannel.class).createList();
+    private boolean foundAny;
 
     JEIMissingItem(Container container, @Nonnull IRecipeLayout recipeLayout) {
+        this.recipeLayout = recipeLayout;
+
         if (container instanceof ContainerMEMonitorable) {
             IItemList<IAEItemStack> ir = ((ContainerMEMonitorable) container).items;
 
@@ -57,8 +62,7 @@ public class JEIMissingItem implements IRecipeTransferError {
                 if (i.isInput() && !i.getAllIngredients().isEmpty()) {
                     List<?> allIngredients = i.getAllIngredients();
                     for (Object allIngredient : allIngredients) {
-                        if (allIngredient instanceof ItemStack) {
-                            ItemStack stack = (ItemStack) allIngredient;
+                        if (allIngredient instanceof ItemStack stack) {
                             if (!stack.isEmpty()) {
                                 IAEItemStack search = AEItemStack.fromItemStack(stack);
                                 if (stack.getItem().isDamageable() || Platform.isGTDamageableItem(stack.getItem())) {
@@ -93,7 +97,8 @@ public class JEIMissingItem implements IRecipeTransferError {
                     }
                     if (!found) {
                         this.errored = true;
-                        break;
+                    } else{
+                        this.foundAny = true;
                     }
                 }
             }
@@ -103,6 +108,13 @@ public class JEIMissingItem implements IRecipeTransferError {
     @Nonnull
     @Override
     public Type getType() {
+        // Workaround. Re-enable the button if not errored.
+        if (this.errored && this.foundAny && this.recipeLayout instanceof RecipeLayout castedRecipeLayout) {
+            var recipeTransferButton = castedRecipeLayout.getRecipeTransferButton();
+            if (recipeTransferButton != null) {
+                recipeTransferButton.enabled = true;
+            }
+        }
         return USER_FACING;
     }
 
@@ -111,12 +123,15 @@ public class JEIMissingItem implements IRecipeTransferError {
         Container c = minecraft.player.openContainer;
         if (c instanceof ContainerMEMonitorable container) {
             IItemList<IAEItemStack> ir = ((ContainerMEMonitorable) c).items;
-            boolean found = false;
-            boolean foundAny = false;
-            boolean craftable = false;
-            boolean foundAnyCraftable = false;
+            boolean found;
+            boolean craftable;
+
+            int foundMissing = 0;
+            int foundCraftables = 0;
             int currentSlot = 0;
+
             this.errored = false;
+            this.foundAny = false;
 
             if (System.currentTimeMillis() - lastUpdate > 1000) {
                 lastUpdate = System.currentTimeMillis();
@@ -144,6 +159,7 @@ public class JEIMissingItem implements IRecipeTransferError {
                 found = false;
                 craftable = false;
                 IItemList<IAEItemStack> valid = AEApi.instance().storage().getStorageChannel(IItemStorageChannel.class).createList();
+
                 if (i.isInput()) {
                     List<?> allIngredients = i.getAllIngredients();
                     for (Object allIngredient : allIngredients) {
@@ -209,11 +225,12 @@ public class JEIMissingItem implements IRecipeTransferError {
                             i.drawHighlight(minecraft, new Color(0.0f, 0.0f, 1.0f, 0.4f), recipeX, recipeY);
                             this.craftableSlots.add(currentSlot);
                             recipeLayout.getItemStacks().set(currentSlot, validStacks);
-                            foundAnyCraftable = true;
+                            foundCraftables++;
                         } else {
                             i.drawHighlight(minecraft, new Color(1.0f, 0.0f, 0.0f, 0.4f), recipeX, recipeY);
                         }
                         this.errored = true;
+                        foundMissing++;
                     } else {
                         foundAny = true;
                         this.foundSlots.add(currentSlot);
@@ -227,17 +244,39 @@ public class JEIMissingItem implements IRecipeTransferError {
                 List<String> tooltipLines = new ArrayList<>();
                 b.init(c, minecraft.player);
                 if (errored && foundAny) {
-                    tooltipLines.add(I18n.translateToLocal("gui.tooltips.appliedenergistics2.PartialTransfer"));
+                    tooltipLines.add(format("gui.tooltips.appliedenergistics2.PartialTransfer"));
                     b.enabled = true;
                     b.visible = true;
+
+                    tooltipLines.add(format("gui.tooltips.appliedenergistics2.CondenseItems"));
                 }
-                if (errored) {
-                    tooltipLines.add(I18n.translateToLocal("gui.tooltips.appliedenergistics2.MissingItem"));
+
+                if (foundMissing > 0) {
+                    tooltipLines.add(format("gui.tooltips.appliedenergistics2.MissingItem", String.valueOf(foundMissing)));
                 }
-                if (foundAnyCraftable) {
-                    tooltipLines.add(I18n.translateToLocal("gui.tooltips.appliedenergistics2.CraftableItem"));
+                if (foundCraftables > 0) {
+                    tooltipLines.add(format("gui.tooltips.appliedenergistics2.CraftableItem", foundCraftables));
                 }
-                TooltipRenderer.drawHoveringText(minecraft, tooltipLines, mouseX, mouseY);
+
+                var longestStringWidth = minecraft.fontRenderer.getStringWidth(tooltipLines.stream()
+                        .max(Comparator.comparingInt(String::length)).get());
+
+                var background = ((RecipeLayout) recipeLayout).getRecipeCategory().getBackground();
+                var scaledresolution = new ScaledResolution(minecraft);
+
+                // Mostly reverse-engineered Minecraft code.
+                final int offset;
+                if (mouseX + longestStringWidth + 4 + 12 > scaledresolution.getScaledWidth()) {
+                    // The tooltip will appear to the left of the mouse cursor.
+                    // Need to offset Y so that the tooltip doesn't block the ingredients.
+                    offset = background.getHeight() + recipeY
+                            + (minecraft.fontRenderer.FONT_HEIGHT * tooltipLines.size()
+                            + 2 * (tooltipLines.size() - 1)) / 2
+                            + 4;
+                } else {
+                    offset = mouseY;
+                }
+                TooltipRenderer.drawHoveringText(minecraft, tooltipLines, mouseX, offset);
             }
         }
     }

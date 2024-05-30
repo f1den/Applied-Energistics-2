@@ -22,8 +22,6 @@ package appeng.integration.modules.jei;
 import appeng.container.implementations.ContainerCraftingTerm;
 import appeng.container.implementations.ContainerPatternEncoder;
 import appeng.container.implementations.ContainerWirelessCraftingTerminal;
-import appeng.container.slot.SlotCraftingMatrix;
-import appeng.container.slot.SlotFakeCraftingMatrix;
 import appeng.core.AELog;
 import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.PacketJEIRecipe;
@@ -34,13 +32,14 @@ import mezz.jei.api.gui.IRecipeLayout;
 import mezz.jei.api.recipe.VanillaRecipeCategoryUid;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
+import mezz.jei.gui.recipes.RecipeLayout;
 import mezz.jei.transfer.RecipeTransferErrorInternal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
-import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -61,7 +60,7 @@ class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandl
     }
 
     @Override
-    public Class<T> getContainerClass() {
+    public @NotNull Class<T> getContainerClass() {
         return this.containerClass;
     }
 
@@ -77,19 +76,24 @@ class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandl
         if (!doTransfer) {
             if (recipeType.equals(VanillaRecipeCategoryUid.CRAFTING) && (container instanceof ContainerCraftingTerm || container instanceof ContainerWirelessCraftingTerminal)) {
                 JEIMissingItem error = new JEIMissingItem(container, recipeLayout);
+
                 if (error.errored())
                     return error;
             }
-            return null;
+
+            if (container instanceof ContainerPatternEncoder || container instanceof ContainerCraftingTerm) {
+                JEITransferInfo.INSTANCE.setRecipeLayout((RecipeLayout) recipeLayout);
+                return JEITransferInfo.INSTANCE;
+            }
         }
 
         if (container instanceof ContainerPatternEncoder) {
             try {
-                if (!((ContainerPatternEncoder) container).isCraftingMode()) {
+                if (!((ContainerPatternEncoder) container).isCraftingMode() && !maxTransfer) {
                     if (recipeType.equals(VanillaRecipeCategoryUid.CRAFTING)) {
                         NetworkHandler.instance().sendToServer(new PacketValueConfig("PatternTerminal.CraftMode", "1"));
                     }
-                } else if (!recipeType.equals(VanillaRecipeCategoryUid.CRAFTING)) {
+                } else if (!recipeType.equals(VanillaRecipeCategoryUid.CRAFTING) || maxTransfer) {
 
                     NetworkHandler.instance().sendToServer(new PacketValueConfig("PatternTerminal.CraftMode", "0"));
                 }
@@ -104,8 +108,7 @@ class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandl
         final NBTTagCompound recipe = new NBTTagCompound();
         final NBTTagList outputs = new NBTTagList();
 
-
-        int slotIndex = 0;
+        var slotIndex = 0;
         for (Map.Entry<Integer, ? extends IGuiIngredient<ItemStack>> ingredientEntry : ingredients.entrySet()) {
             IGuiIngredient<ItemStack> ingredient = ingredientEntry.getValue();
             if (!ingredient.isInput()) {
@@ -117,45 +120,39 @@ class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandl
                 continue;
             }
 
-            for (final Slot slot : container.inventorySlots) {
-                if (slot instanceof SlotCraftingMatrix || slot instanceof SlotFakeCraftingMatrix) {
-                    if (slot.getSlotIndex() == slotIndex) {
-                        final NBTTagList tags = new NBTTagList();
-                        final List<ItemStack> list = new ArrayList<>();
-                        final ItemStack displayed = ingredient.getDisplayedIngredient();
+            final NBTTagList tags = new NBTTagList();
+            final List<ItemStack> list = new ArrayList<>();
+            final ItemStack displayed = ingredient.getDisplayedIngredient();
 
-                        // prefer currently displayed item
-                        if (displayed != null && !displayed.isEmpty()) {
-                            list.add(displayed);
-                        }
+            // prefer currently displayed item
+            if (displayed != null && !displayed.isEmpty()) {
+                list.add(displayed);
+            }
 
-                        // prefer pure crystals.
-                        for (ItemStack stack : ingredient.getAllIngredients()) {
-                            if (stack == null) {
-                                continue;
-                            }
-                            if (Platform.isRecipePrioritized(stack)) {
-                                list.add(0, stack);
-                            } else {
-                                list.add(stack);
-                            }
-                        }
-
-                        for (final ItemStack is : list) {
-                            final NBTTagCompound tag = stackToNBT(is);
-                            tags.appendTag(tag);
-                        }
-
-                        recipe.setTag("#" + slot.getSlotIndex(), tags);
-                        break;
-                    }
+            // prefer pure crystals.
+            for (ItemStack stack : ingredient.getAllIngredients()) {
+                if (stack == null) {
+                    continue;
+                }
+                if (Platform.isRecipePrioritized(stack)) {
+                    list.add(0, stack);
+                } else {
+                    list.add(stack);
                 }
             }
 
+            for (final ItemStack is : list) {
+                final NBTTagCompound tag = stackToNBT(is);
+                tags.appendTag(tag);
+            }
+
+            recipe.setTag("#" + slotIndex, tags);
             slotIndex++;
         }
 
+
         recipe.setTag("outputs", outputs);
+        recipe.setBoolean("condense", maxTransfer);
 
         try {
             NetworkHandler.instance().sendToServer(new PacketJEIRecipe(recipe));
