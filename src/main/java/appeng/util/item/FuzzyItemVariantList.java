@@ -38,7 +38,6 @@ import java.util.Map;
  * {@link #findFuzzy(IAEItemStack, FuzzyMode)}.
  */
 class FuzzyItemVariantList extends ItemVariantList {
-
     static final SharedStackComparator COMPARATOR = new SharedStackComparator();
 
     // NOTE: We only use Object as they key here so we can pass our special DamageBounds to the subMap method.
@@ -47,6 +46,10 @@ class FuzzyItemVariantList extends ItemVariantList {
 
     @Override
     public Collection<IAEItemStack> findFuzzy(final IAEItemStack filter, final FuzzyMode fuzzy) {
+        if (fuzzy == FuzzyMode.IGNORE_ALL) {
+            return this.records.values();
+        }
+
         ItemStack itemStack = filter.getDefinition();
 
         ItemDamageBound lowerBound = makeLowerBound(itemStack, fuzzy);
@@ -161,14 +164,8 @@ class FuzzyItemVariantList extends ItemVariantList {
             damage = stack.getItemDamage();
         }
 
-        if (fuzzy == FuzzyMode.IGNORE_ALL) {
-            if (maxDamage != 0) {
-                damage = maxDamage;
-            }
-        } else {
-            final int breakpoint = fuzzy.calculateBreakPoint(maxDamage);
-            damage = damage <= breakpoint ? breakpoint : maxDamage;
-        }
+        final int breakpoint = fuzzy.calculateBreakPoint(maxDamage);
+        damage = damage <= breakpoint ? breakpoint : maxDamage;
 
         return new ItemDamageBound(damage);
     }
@@ -181,26 +178,19 @@ class FuzzyItemVariantList extends ItemVariantList {
         Preconditions.checkState(stack.getItem().isDamageable() || (Platform.isGTDamageableItem(stack.getItem())), "Item#isDamageable() has to be true");
 
         int damage;
-        if (fuzzy == FuzzyMode.IGNORE_ALL) {
-            damage = MIN_DAMAGE_VALUE;
+        int maxDamage;
+        if (Platform.isIC2DamageableItem(stack.getItem())) {
+            maxDamage = ((ICustomDamageItem) stack.getItem()).getMaxCustomDamage(stack);
+            damage = ((ICustomDamageItem) stack.getItem()).getCustomDamage(stack);
+        } else if (Platform.isGTDamageableItem(stack.getItem())) {
+            maxDamage = ToolClass.getGTMaxDamage(stack);
+            damage = ToolClass.getGTitemDamage(stack);
         } else {
-            int maxDamage;
-            if (Platform.isIC2DamageableItem(stack.getItem())) {
-                maxDamage = ((ICustomDamageItem) stack.getItem()).getMaxCustomDamage(stack);
-                damage = ((ICustomDamageItem) stack.getItem()).getCustomDamage(stack);
-            } else if (Platform.isGTDamageableItem(stack.getItem())) {
-                maxDamage = ToolClass.getGTMaxDamage(stack);
-                damage = ToolClass.getGTitemDamage(stack);
-            } else {
-                maxDamage = stack.getMaxDamage();
-                damage = stack.getItemDamage();
-            }
-
-            final int breakpoint = fuzzy.calculateBreakPoint(maxDamage);
-            damage = damage <= breakpoint ? MIN_DAMAGE_VALUE : breakpoint;
+            maxDamage = stack.getMaxDamage();
+            damage = stack.getItemDamage();
         }
 
-        return new ItemDamageBound(damage);
+        final int breakpoint = fuzzy.calculateBreakPoint(maxDamage);
+        return new ItemDamageBound(damage <= breakpoint ? MIN_DAMAGE_VALUE : breakpoint);
     }
-
 }
