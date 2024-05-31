@@ -243,7 +243,7 @@ public class JEIMissingItem implements IRecipeTransferError {
             if (b != null) {
                 List<String> tooltipLines = new ArrayList<>();
                 b.init(c, minecraft.player);
-                if (errored && foundAny) {
+                if (foundAny) {
                     tooltipLines.add(format("gui.tooltips.appliedenergistics2.PartialTransfer"));
                     b.enabled = true;
                     b.visible = true;
@@ -258,25 +258,27 @@ public class JEIMissingItem implements IRecipeTransferError {
                     tooltipLines.add(format("gui.tooltips.appliedenergistics2.CraftableItem", foundCraftables));
                 }
 
-                var longestStringWidth = minecraft.fontRenderer.getStringWidth(tooltipLines.stream()
-                        .max(Comparator.comparingInt(String::length)).get());
+                if (tooltipLines.size() > 0) {
+                    var longestStringWidth = minecraft.fontRenderer.getStringWidth(tooltipLines.stream()
+                            .max(Comparator.comparingInt(String::length)).get());
 
-                var background = ((RecipeLayout) recipeLayout).getRecipeCategory().getBackground();
-                var scaledresolution = new ScaledResolution(minecraft);
+                    var background = ((RecipeLayout) recipeLayout).getRecipeCategory().getBackground();
+                    var scaledresolution = new ScaledResolution(minecraft);
 
-                // Mostly reverse-engineered Minecraft code.
-                final int offset;
-                if (mouseX + longestStringWidth + 4 + 12 > scaledresolution.getScaledWidth()) {
-                    // The tooltip will appear to the left of the mouse cursor.
-                    // Need to offset Y so that the tooltip doesn't block the ingredients.
-                    offset = background.getHeight() + recipeY
-                            + (minecraft.fontRenderer.FONT_HEIGHT * tooltipLines.size()
-                            + 2 * (tooltipLines.size() - 1)) / 2
-                            + 4;
-                } else {
-                    offset = mouseY;
+                    // Mostly reverse-engineered Minecraft code.
+                    final int offset;
+                    if (mouseX + longestStringWidth + 4 + 12 > scaledresolution.getScaledWidth()) {
+                        // The tooltip will appear to the left of the mouse cursor.
+                        // Need to offset Y so that the tooltip doesn't block the ingredients.
+                        offset = background.getHeight() + recipeY
+                                + (minecraft.fontRenderer.FONT_HEIGHT * tooltipLines.size()
+                                + 2 * (tooltipLines.size() - 1)) / 2
+                                + 4;
+                    } else {
+                        offset = mouseY;
+                    }
+                    TooltipRenderer.drawHoveringText(minecraft, tooltipLines, mouseX, offset);
                 }
-                TooltipRenderer.drawHoveringText(minecraft, tooltipLines, mouseX, offset);
             }
         }
     }
