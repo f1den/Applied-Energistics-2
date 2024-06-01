@@ -27,6 +27,9 @@ import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.PacketJEIRecipe;
 import appeng.core.sync.packets.PacketValueConfig;
 import appeng.util.Platform;
+import gregtech.api.capability.IMultiblockController;
+import gregtech.api.util.GTUtility;
+import gregtech.integration.jei.multiblock.MultiblockInfoCategory;
 import mezz.jei.api.gui.IGuiIngredient;
 import mezz.jei.api.gui.IRecipeLayout;
 import mezz.jei.api.recipe.VanillaRecipeCategoryUid;
@@ -34,7 +37,9 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.gui.recipes.RecipeLayout;
 import mezz.jei.transfer.RecipeTransferErrorInternal;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.Container;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -49,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 
 import static appeng.helpers.ItemStackHelper.stackToNBT;
+import static appeng.util.Platform.GTLoaded;
 
 
 class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandler<T> {
@@ -150,6 +156,30 @@ class RecipeTransferHandler<T extends Container> implements IRecipeTransferHandl
             slotIndex++;
         }
 
+        if (outputs.isEmpty() && GTLoaded && recipeLayout.getRecipeCategory() instanceof MultiblockInfoCategory) {
+            // JEI doesn't allow getting the recipe wrapper :(
+            String controllerName = null;
+            for (var ingredient : ingredients.entrySet()) {
+                if (!ingredient.getValue().isInput()) continue;
+
+                var ingredientStack = ingredient.getValue().getDisplayedIngredient();
+                if (ingredientStack == null) continue;
+
+                var meta = GTUtility.getMetaTileEntity(ingredientStack);
+                if (meta == null) continue;
+
+                if (!(meta instanceof IMultiblockController)) continue;
+
+                controllerName = I18n.format(meta.getMetaFullName());
+                break;
+            }
+
+            if (controllerName != null) {
+                var paper = Items.PAPER.getDefaultInstance().copy();
+                paper.setStackDisplayName(controllerName);
+                outputs.appendTag(stackToNBT(paper));
+            }
+        }
 
         recipe.setTag("outputs", outputs);
         recipe.setBoolean("condense", maxTransfer);
