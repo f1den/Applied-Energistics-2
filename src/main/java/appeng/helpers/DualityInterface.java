@@ -1084,7 +1084,8 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
             if (ad != null) {
                 if (this.isBlocking()) {
                     IPhantomTile phantomTE;
-                    if (Loader.isModLoaded("actuallyadditions") && te instanceof IPhantomTile) {
+//                    if (Loader.isModLoaded("actuallyadditions") && te instanceof IPhantomTile) {
+                    if (Platform.isModLoaded("actuallyadditions") && te instanceof IPhantomTile) {
                         phantomTE = ((IPhantomTile) te);
                         if (phantomTE.hasBoundPosition()) {
                             TileEntity phantom = w.getTileEntity(phantomTE.getBoundPosition());
@@ -1224,7 +1225,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
 
                 final InventoryAdaptor ad = InventoryAdaptor.getAdaptor(te, s.getOpposite());
                 if (ad != null) {
-                    if (Loader.isModLoaded("actuallyadditions") && Platform.GTLoaded && te instanceof IPhantomTile) {
+                    if (Platform.isModLoaded("actuallyadditions") && Platform.GTLoaded && te instanceof IPhantomTile) { // if (Loader.isModLoaded("actuallyadditions")
                         IPhantomTile phantomTE = ((IPhantomTile) te);
                         if (phantomTE.hasBoundPosition()) {
                             TileEntity phantom = w.getTileEntity(phantomTE.getBoundPosition());

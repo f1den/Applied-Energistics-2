@@ -171,7 +171,8 @@ public class SlotCraftingTerm extends AppEngCraftingSlot {
 
     // Returns null in case this recipe is not yet unlocked
     private IRecipe handleRecipe(InventoryCrafting ic, IRecipe recipe, EntityPlayer player) {
-        if (Loader.isModLoaded("recipestages")) {
+//        if (Loader.isModLoaded("recipestages")) {
+        if (Platform.isModLoaded("recipestages")) {
             if (recipe instanceof RecipeStage) {
                 final RecipeStage staged = (RecipeStage) recipe;
                 if (!staged.isGoodForCrafting(ic))

@@ -89,7 +89,8 @@ public class ContainerMEMonitorable extends AEBaseContainer implements IConfigMa
     private IConfigManagerHost gui;
     private IConfigManager serverCM;
     private IGridNode networkNode;
-    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
+//    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
+    protected int jeiOffset = Platform.isModLoaded("jei") ? 24 : 0;
 
 
     public ContainerMEMonitorable(final InventoryPlayer ip, final ITerminalHost monitorable) {

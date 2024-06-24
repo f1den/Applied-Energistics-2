@@ -103,7 +103,8 @@ public class GuiMEMonitorable extends AEBaseMEGui implements ISortSource, IConfi
     private int currentMouseY = 0;
     private boolean delayedUpdate;
 
-    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
+//    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
+    protected int jeiOffset = Platform.isModLoaded("jei") ? 24 : 0;
 
     public GuiMEMonitorable(final InventoryPlayer inventoryPlayer, final ITerminalHost te) {
         this(inventoryPlayer, te, new ContainerMEMonitorable(inventoryPlayer, te));

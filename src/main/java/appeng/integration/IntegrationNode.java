@@ -22,6 +22,7 @@ package appeng.integration;
 import appeng.api.exceptions.ModNotInstalledException;
 import appeng.core.AEConfig;
 import appeng.core.AELog;
+import appeng.util.Platform;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.ModAPIManager;
 
@@ -64,8 +65,8 @@ final class IntegrationNode {
                 switch (stage) {
                     case PRE_INIT:
                         final ModAPIManager apiManager = ModAPIManager.INSTANCE;
-                        boolean enabled = this.modID == null || Loader.isModLoaded(this.modID) || apiManager.hasAPI(this.modID);
-
+//                        boolean enabled = this.modID == null || Loader.isModLoaded(this.modID) || apiManager.hasAPI(this.modID);
+                        boolean enabled = this.modID == null || Platform.isModLoaded(this.modID) || apiManager.hasAPI(this.modID);
                         AEConfig.instance()
                                 .addCustomCategoryComment("ModIntegration",
                                         "Valid Values are 'AUTO', 'ON', or 'OFF' - defaults to 'AUTO' ; Suggested that you leave this alone unless your experiencing an issue, or wish to disable the integration for a reason.");

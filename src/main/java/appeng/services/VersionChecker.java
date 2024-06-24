@@ -25,6 +25,7 @@ import appeng.core.AppEng;
 import appeng.services.version.*;
 import appeng.services.version.github.FormattedRelease;
 import appeng.services.version.github.ReleaseFetcher;
+import appeng.util.Platform;
 import com.google.common.base.Preconditions;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fml.common.Loader;
@@ -153,7 +154,8 @@ public final class VersionChecker implements Runnable {
      * @param changelog    retrieved github changelog
      */
     private void interactWithVersionCheckerMod(@Nonnull final String modFormatted, @Nonnull final String ghFormatted, @Nonnull final String changelog) {
-        if (Loader.isModLoaded("VersionChecker")) {
+//        if (Loader.isModLoaded("VersionChecker")) {
+        if (Platform.isModLoaded("VersionChecker")) {
             final NBTTagCompound versionInf = new NBTTagCompound();
             versionInf.setString("modDisplayName", AppEng.MOD_NAME);
             versionInf.setString("oldVersion", modFormatted);

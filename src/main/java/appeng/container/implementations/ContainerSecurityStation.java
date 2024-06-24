@@ -30,6 +30,7 @@ import appeng.container.slot.SlotOutput;
 import appeng.container.slot.SlotRestrictedInput;
 import appeng.tile.inventory.AppEngInternalInventory;
 import appeng.tile.misc.TileSecurityStation;
+import appeng.util.Platform;
 import appeng.util.inv.IAEAppEngInventory;
 import appeng.util.inv.InvOperation;
 import net.minecraft.entity.player.EntityPlayer;
@@ -53,8 +54,8 @@ public class ContainerSecurityStation extends ContainerMEMonitorable implements 
     @GuiSync(0)
     public int permissionMode = 0;
 
-    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
-
+//    protected int jeiOffset = Loader.isModLoaded("jei") ? 24 : 0;
+    protected int jeiOffset = Platform.isModLoaded("jei") ? 24 : 0;
     public ContainerSecurityStation(final InventoryPlayer ip, final ITerminalHost monitorable) {
         super(ip, monitorable, false);
 

@@ -116,7 +116,8 @@ public class GuiInterfaceTerminal extends AEBaseGui {
         this.setScrollBar(scrollbar);
         this.xSize = 208;
         this.ySize = 255;
-        this.jeiEnabled = Loader.isModLoaded("jei");
+//        this.jeiEnabled = Loader.isModLoaded("jei");
+        this.jeiEnabled = Platform.isModLoaded("jei");
         this.jeiButtonPadding = jeiEnabled ? 22 : 0;
 
         searchFieldInputs = createTextField(86, 12, ButtonToolTips.SearchFieldInputs.getLocal());

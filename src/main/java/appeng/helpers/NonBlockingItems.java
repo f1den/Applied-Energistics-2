@@ -30,7 +30,8 @@ public class NonBlockingItems {
                     modids = s.substring(1, s.length() - 1).split("\\|");
                 } else {
                     for (String modid : modids) {
-                        if (!Loader.isModLoaded(modid)) {
+//                        if (!Loader.isModLoaded(modid)) {
+                        if (!Platform.isModLoaded(modid)) {
                             continue;
                         }
                         NON_BLOCKING_MAP.putIfAbsent(modid, new Object2ObjectOpenHashMap<>());

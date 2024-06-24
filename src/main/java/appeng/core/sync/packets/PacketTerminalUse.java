@@ -45,7 +45,8 @@ public class PacketTerminalUse extends AppEngPacket {
 
             }
         }
-        if (Loader.isModLoaded("baubles")) {
+//        if (Loader.isModLoaded("baubles")) {
+        if (Platform.isModLoaded("baubles")) {
             tryOpenBauble(player);
         }
     }
