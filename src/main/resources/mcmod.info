@@ -1,0 +1,21 @@
+[
+    {
+        "modid": "appliedenergistics2",
+        "name": "AE2 Unofficial Extended Life",
+        "description": "A Mod about Matter, Energy and using them to conquer the world..",
+        "version": "${version}",
+        "mcversion": "${mcversion}",
+        "url": "https://github.com/AE2-UEL/Applied-Energistics-2",
+        "updateUrl": "",
+        "authorList": [
+            "NotMyWing",
+            "Serenibyss",
+            "PrototypeTrousers",
+            "AlgorithmX2",
+            "contributors <3"
+        ],
+        "credits": "The AE2:UEL team, AlgorithmX2 & contributors",
+        "logoFile": "assets/appliedenergistics2/meta/logo.png",
+        "screenshots":[]
+    }
+]
