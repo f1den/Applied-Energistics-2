@@ -73,6 +73,8 @@ import gregtech.api.block.machines.BlockMachine;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.util.GTUtility;
 import ic2.api.item.ICustomDamageItem;
+import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -130,6 +132,8 @@ import java.util.*;
  */
 @Optional.Interface(iface = "ic2.api.item.ICustomDamageItem", modid = "IC2")
 public class Platform {
+
+    private static final Object2BooleanMap<String> CACHED_MODS = new Object2BooleanOpenHashMap<>();
 
     public static final Block AIR_BLOCK = Blocks.AIR;
 
@@ -526,19 +530,27 @@ public class Platform {
     }
 
     public static boolean isModLoaded(final String modid) {
-        try {
-            // if this fails for some reason, try the other method.
-            return Loader.isModLoaded(modid);
-        } catch (final Throwable ignored) {
-        }
-
-        for (final ModContainer f : Loader.instance().getActiveModList()) {
-            if (f.getModId().equals(modid)) {
-                return true;
-            }
-        }
-        return false;
+        return CACHED_MODS.computeIfAbsent(modid, (k) -> {
+            try {
+                // if this fails for some reason, try the other method.
+                return Loader.isModLoaded(k);
+            } catch (final Throwable ignored) {}
+            return Loader.instance().getActiveModList()
+                    .stream().anyMatch(mod -> mod.getModId().equals(k));
+        });
     }
+//        try {
+//            // if this fails for some reason, try the other method.
+//            return Loader.isModLoaded(modid);
+//        } catch (final Throwable ignored) {}
+
+//        for (final ModContainer f : Loader.instance().getActiveModList()) {
+//            if (f.getModId().equals(modid)) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
     public static ItemStack findMatchingRecipeOutput(final InventoryCrafting ic, final World world) {
         return CraftingManager.findMatchingResult(ic, world);
@@ -551,8 +563,8 @@ public class Platform {
         }
 
         ItemStack itemStack = ItemStack.EMPTY;
-        if (o instanceof AEItemStack) {
-            final AEItemStack ais = (AEItemStack) o;
+        if (o instanceof AEItemStack ais) {
+//            final AEItemStack ais = (AEItemStack) o;
             return ais.getToolTip();
         } else if (o instanceof ItemStack) {
             itemStack = (ItemStack) o;
@@ -655,8 +667,7 @@ public class Platform {
 
             }
 
-            if (eq.getItem() instanceof IAEWrench) {
-                final IAEWrench wrench = (IAEWrench) eq.getItem();
+            if (eq.getItem() instanceof IAEWrench wrench) {
                 return wrench.canWrench(eq, player, pos);
             }
         }
