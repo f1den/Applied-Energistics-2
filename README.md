@@ -6,6 +6,7 @@
 
 ## BUG FOUND ->
 buggy imports are in:
+
 src/main/java/appeng/fluids/helper/DualityFluidInterface.java
 src/main/java/appeng/helpers/DualityInterface.java
 
