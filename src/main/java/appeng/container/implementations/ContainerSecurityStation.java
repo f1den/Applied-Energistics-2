@@ -76,8 +76,8 @@ public class ContainerSecurityStation extends ContainerMEMonitorable implements 
             final SecurityPermissions permission = SecurityPermissions.valueOf(value);
 
             final ItemStack a = this.configSlot.getStack();
-            if (!a.isEmpty() && a.getItem() instanceof IBiometricCard) {
-                final IBiometricCard bc = (IBiometricCard) a.getItem();
+            if (!a.isEmpty() && a.getItem() instanceof IBiometricCard bc) {
+//                final IBiometricCard bc = (IBiometricCard) a.getItem();
                 if (bc.hasPermission(a, permission)) {
                     bc.removePermission(a, permission);
                 } else {
@@ -96,8 +96,8 @@ public class ContainerSecurityStation extends ContainerMEMonitorable implements 
         this.setPermissionMode(0);
 
         final ItemStack a = this.configSlot.getStack();
-        if (!a.isEmpty() && a.getItem() instanceof IBiometricCard) {
-            final IBiometricCard bc = (IBiometricCard) a.getItem();
+        if (!a.isEmpty() && a.getItem() instanceof IBiometricCard bc) {
+//            final IBiometricCard bc = (IBiometricCard) a.getItem();
 
             for (final SecurityPermissions sp : bc.getPermissions(a)) {
                 this.setPermissionMode(this.getPermissionMode() | (1 << sp.ordinal()));
