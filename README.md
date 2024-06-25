@@ -5,15 +5,18 @@
 ---
 
 ## BUG FOUND ->
-buggy imports are in:
+**buggy imports are in:**
 
 src/main/java/appeng/fluids/helper/DualityFluidInterface.java
+
 src/main/java/appeng/helpers/DualityInterface.java
 
-100% buggy code:
+**100% buggy code:**
+
 src/main/java/appeng/tile/inventory/AppEngNetworkInventory.java
 
-not tested, but probably also buggy:
+**not tested, but probably also buggy:**
+
 src/main/java/appeng/fluids/util/AENetworkFluidInventory.java
 
 ## About
