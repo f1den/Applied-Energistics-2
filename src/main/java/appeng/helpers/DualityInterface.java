@@ -35,6 +35,7 @@ import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.events.MENetworkCraftingPatternChange;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.networking.storage.IStorageGrid;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
@@ -64,8 +65,12 @@ import appeng.parts.misc.PartInterface;
 import appeng.tile.inventory.AppEngInternalAEInventory;
 import appeng.tile.inventory.AppEngInternalInventory;
 import appeng.tile.inventory.AppEngInternalOversizedInventory;
+import appeng.tile.inventory.AppEngNetworkInventory;
 import appeng.tile.networking.TileCableBus;
-import appeng.util.*;
+import appeng.util.ConfigManager;
+import appeng.util.IConfigManagerHost;
+import appeng.util.InventoryAdaptor;
+import appeng.util.Platform;
 import appeng.util.inv.*;
 import appeng.util.item.AEItemStack;
 import com.google.common.collect.ImmutableSet;
@@ -88,7 +93,6 @@ import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.wrapper.RangedWrapper;
@@ -98,7 +102,8 @@ import java.util.*;
 
 import static appeng.api.config.LockCraftingMode.LOCK_UNTIL_PULSE;
 import static appeng.api.config.LockCraftingMode.LOCK_UNTIL_RESULT;
-import static appeng.helpers.ItemStackHelper.*;
+import static appeng.helpers.ItemStackHelper.stackFromNBT;
+import static appeng.helpers.ItemStackHelper.stackToNBT;
 
 
 public class DualityInterface implements IGridTickable, IStorageMonitorable, IInventoryDestination, IAEAppEngInventory, IConfigManagerHost, ICraftingProvider, IUpgradeableHost {
@@ -115,7 +120,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
     private final IActionSource interfaceRequestSource;
     private final ConfigManager cm = new ConfigManager(this);
     private final AppEngInternalAEInventory config = new AppEngInternalAEInventory(this, NUMBER_OF_CONFIG_SLOTS, 512);
-    private final AppEngInternalInventory storage = new AppEngInternalOversizedInventory(this, NUMBER_OF_STORAGE_SLOTS, 512);
+    private final AppEngInternalInventory storage;
     private final AppEngInternalInventory patterns = new AppEngInternalInventory(this, NUMBER_OF_PATTERN_SLOTS, 1);
     private final MEMonitorPassThrough<IAEItemStack> items = new MEMonitorPassThrough<>(new NullInventory<IAEItemStack>(), AEApi.instance().storage().getStorageChannel(IItemStorageChannel.class));
     private final MEMonitorPassThrough<IAEFluidStack> fluids = new MEMonitorPassThrough<>(new NullInventory<IAEFluidStack>(), AEApi.instance().storage().getStorageChannel(IFluidStorageChannel.class));
@@ -153,10 +158,21 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
 
         final MachineSource actionSource = new MachineSource(this.iHost);
         this.mySource = actionSource;
+        this.storage = new AppEngInternalOversizedInventory(this, NUMBER_OF_STORAGE_SLOTS, 512);
+//        this.storage = new AppEngNetworkInventory(this::getStorageGrid, this.mySource, this, NUMBER_OF_STORAGE_SLOTS, 512);
         this.fluids.setChangeSource(actionSource);
         this.items.setChangeSource(actionSource);
 
         this.interfaceRequestSource = new InterfaceRequestSource(this.iHost);
+    }
+
+    @Nullable
+    private IStorageGrid getStorageGrid() {
+        try {
+            return this.gridProxy.getStorage();
+        } catch (GridAccessException e) {
+            return null;
+        }
     }
 
     private static boolean invIsCustomBlocking(BlockingInventoryAdaptor inv) {
@@ -525,8 +541,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
             return;
         }
 
-        if (is.getItem() instanceof ICraftingPatternItem) {
-            final ICraftingPatternItem cpi = (ICraftingPatternItem) is.getItem();
+        if (is.getItem() instanceof ICraftingPatternItem cpi) {
             final ICraftingPatternDetails details = cpi.getPatternForItem(is, this.iHost.getTileEntity().getWorld());
 
             if (details != null) {
@@ -1068,8 +1083,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
                 continue;
             }
 
-            if (te instanceof ICraftingMachine) {
-                final ICraftingMachine cm = (ICraftingMachine) te;
+            if (te instanceof ICraftingMachine cm) {
                 if (cm.acceptsPlans()) {
                     visitedFaces.remove(s);
                     if (cm.pushPattern(patternDetails, table, s.getOpposite())) {
@@ -1084,7 +1098,6 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
             if (ad != null) {
                 if (this.isBlocking()) {
                     IPhantomTile phantomTE;
-//                    if (Loader.isModLoaded("actuallyadditions") && te instanceof IPhantomTile) {
                     if (Platform.isModLoaded("actuallyadditions") && te instanceof IPhantomTile) {
                         phantomTE = ((IPhantomTile) te);
                         if (phantomTE.hasBoundPosition()) {
@@ -1225,8 +1238,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
 
                 final InventoryAdaptor ad = InventoryAdaptor.getAdaptor(te, s.getOpposite());
                 if (ad != null) {
-                    if (Platform.isModLoaded("actuallyadditions") && Platform.GTLoaded && te instanceof IPhantomTile) { // if (Loader.isModLoaded("actuallyadditions")
-                        IPhantomTile phantomTE = ((IPhantomTile) te);
+                    if (Platform.isModLoaded("actuallyadditions") && Platform.GTLoaded && te instanceof IPhantomTile phantomTE) {
                         if (phantomTE.hasBoundPosition()) {
                             TileEntity phantom = w.getTileEntity(phantomTE.getBoundPosition());
                             if (NonBlockingItems.INSTANCE.getMap().containsKey(w.getBlockState(phantomTE.getBoundPosition()).getBlock().getRegistryName().getNamespace())) {
@@ -1454,7 +1466,7 @@ public class DualityInterface implements IGridTickable, IStorageMonitorable, IIn
 
     public long getSortValue() {
         final TileEntity te = this.iHost.getTileEntity();
-        return (te.getPos().getZ() << 24) ^ (te.getPos().getX() << 8) ^ te.getPos().getY();
+        return ((long) te.getPos().getZ() << 24) ^ ((long) te.getPos().getX() << 8) ^ te.getPos().getY();
     }
 
     public void initialize() {
